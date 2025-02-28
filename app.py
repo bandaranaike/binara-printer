@@ -26,7 +26,7 @@ class PrintRequest(BaseModel):
     bill_id : int
     customer_name : str
     doctor_name	: str
-      : list[dict]  # Example: [{"name": "Item A", "price": 10.0}, {"name": "Item B", "price": 20.0}]
+    items : list[dict]  # Example: [{"name": "Item A", "price": 10.0}, {"name": "Item B", "price": 20.0}]
     total : str
 
 # Directory for saving generated PDFs
