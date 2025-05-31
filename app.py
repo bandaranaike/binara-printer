@@ -1,11 +1,9 @@
+import win32print
+import win32ui
 from datetime import datetime
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from reportlab.pdfgen import canvas
 from fastapi.middleware.cors import CORSMiddleware
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-
+from pydantic import BaseModel
 import os
 
 app = FastAPI()
@@ -13,85 +11,101 @@ app = FastAPI()
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://app.binara.live"],  # Replace with your frontend's URL
+    allow_origins=["http://localhost:3000", "https://app.binara.live"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Model for the print request
 class PrintRequest(BaseModel):
     bill_reference : str
     payment_type : str
     bill_id : int
     customer_name : str
-    doctor_name	: str
-    items : list[dict]  # Example: [{"name": "Item A", "price": 10.0}, {"name": "Item B", "price": 20.0}]
+    doctor_name : str
+    items : list[dict]
     total : str
 
-# Directory for saving generated PDFs
+# Directory for saving generated text files
 OUTPUT_DIR = "bills"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+class PrintRequest(BaseModel):
+    bill_reference: str
+    payment_type: str
+    bill_id: int
+    customer_name: str
+    doctor_name: str
+    items: list[dict]
+    total: str
 
 @app.post("/print")
 def print_bill(request: PrintRequest):
     try:
-        pdfmetrics.registerFont(TTFont('CodeSaver', 'fonts/CodeSaver-Regular.ttf'))
+        printer_name = "EPSON LQ-310"
+        hPrinter = win32print.OpenPrinter(printer_name)
+        printer_info = win32print.GetPrinter(hPrinter, 2)
+        pdc = win32ui.CreateDC()
+        pdc.CreatePrinterDC(printer_name)
+        pdc.StartDoc("Bill Print")
+        pdc.StartPage()
 
-        # File path for the PDF
-        file_path = os.path.join(OUTPUT_DIR, f"bill_{request.bill_id}{'-' if request.bill_reference else ''}{request.bill_reference}.pdf")
+        font_bold = win32ui.CreateFont({
+            "name": "Courier New",
+            "height": 45,
+            "weight": 700
+        })
+        font_normal = win32ui.CreateFont({
+            "name": "Courier New",
+            "height": 30
+        })
 
-        # Generate PDF
-        c = canvas.Canvas(file_path)
-        x_position = 50
-        y_position = 800
-
-        c.setFont("CodeSaver", 16)
-        c.drawString(x_position, y_position, f"Binara Medical Centre")
-        y_position -= 30
-
-        c.setFont("CodeSaver", 12)
-
-        now  = datetime.now()
+        now = datetime.now()
         at = now.strftime("%d/%m/%Y %H:%M:%S")
 
-        # Bill header
-        c.drawString(x_position, y_position, f"Bill No.: {request.bill_id}{'-' if request.bill_reference else ''}{request.bill_reference}")
-        c.drawString(x_position + 150, y_position, at)
-        y_position -= 20
-        c.drawString(x_position, y_position, f"Customer: {request.customer_name}")
-        y_position -= 20
+        x = 50  # shift to the left (1 cm ~ 100-120 units for LQ-310)
+        y = 100
+
+        # Title
+        pdc.SelectObject(font_bold)
+        pdc.TextOut(x, y, "BINARA MEDICAL CENTRE")
+        y += 55
+
+        pdc.SelectObject(font_normal)
+        pdc.TextOut(x, y, f"Bill No.: {request.bill_id}{'-' if request.bill_reference else ''}{request.bill_reference}    {at}")
+        y += 40
+        pdc.TextOut(x, y, f"Customer: {request.customer_name}")
+        y += 40
 
         if request.doctor_name:
-            c.drawString(x_position, y_position, f"Doctor: {request.doctor_name}")
-            y_position -= 20
+            pdc.TextOut(x, y, f"Doctor: {request.doctor_name}")
+            y += 40
 
-        y_position -= 10
-        c.drawString(x_position, y_position, "Services:")
-        y_position -= 20
+        y += 30
+        pdc.TextOut(x, y, "Services:")
+        y += 40
 
-        # Items
         for item in request.items:
-            c.drawString(x_position + 20, y_position, f"{item['name']} - Rs.{item['price']}")
-            y_position -= 20
+            pdc.TextOut(x, y, f"{item['name']} - Rs.{item['price']}")
+            y += 40
 
-        y_position -= 10
-        # Total
-        c.drawString(x_position, y_position, f"Total: Rs.{request.total}")
+        y += 20
+        pdc.TextOut(x, y, f"Total: Rs.{request.total}")
+        y += 40
+        pdc.TextOut(x, y, f"Payment type: {request.payment_type}")
+        y += 50
 
-        c.setFont("CodeSaver", 10)
+        pdc.TextOut(x, y, "No.82, New Town, Kundasale.")
+        y += 30
+        pdc.TextOut(x, y, "Tel: 0817213239/0812421942, Fax:0812421942")
+        y += 30
+        pdc.TextOut(x, y, "Email: binara82@gmail.com")
 
-        c.drawString(x_position + 200, y_position, f"Payment type: {request.payment_type}")
-        y_position -= 30
+        pdc.EndPage()
+        pdc.EndDoc()
+        pdc.DeleteDC()
 
-        c.setFont("CodeSaver", 10)
-        c.drawString(x_position, y_position, "No.82, New Town, Kundasale.")
-        y_position -= 16
-        c.drawString(x_position, y_position, "Tel: 0817213239/0812421942, Fax:0812421942")
-        y_position -= 16
-        c.drawString(x_position, y_position, "Email: binara82@gmail.com")
-        c.save()
+        return {"status": "success", "message": "Printed without popup via device context"}
 
-        return {"status": "success", "message": "PDF generated", "file_path": file_path}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
