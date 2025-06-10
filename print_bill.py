@@ -1,30 +1,12 @@
 import win32print
 import win32ui
 from datetime import datetime
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
 
-app = FastAPI()
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://app.binara.live"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-class PrintRequest(BaseModel):
-    bill_reference : str
-    payment_type : str
-    bill_id : int
-    customer_name : str
-    doctor_name : str
-    items : list[dict]
-    total : str
+router = APIRouter()
 
 # Directory for saving generated text files
 OUTPUT_DIR = "bills"
@@ -39,10 +21,10 @@ class PrintRequest(BaseModel):
     items: list[dict]
     total: str
 
-@app.post("/print")
+@router.post("/print")
 def print_bill(request: PrintRequest):
     try:
-        printer_name = "EPSON LQ-310"
+        printer_name = "MSPrintPDF" # Change to your printer name
         hPrinter = win32print.OpenPrinter(printer_name)
         printer_info = win32print.GetPrinter(hPrinter, 2)
         pdc = win32ui.CreateDC()
