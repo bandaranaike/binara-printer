@@ -38,8 +38,8 @@ def wrap_text(text: str, max_chars: int):
 def print_service_cost(request: PrintRequest):
     try:
         # Setup
-        printer_name = "MSPrintPDF"  # Replace with your printer name
-        # printer_name = "EPSON LQ-310"  # Replace with your printer name
+        # printer_name = "MSPrintPDF"  # Replace with your printer name
+        printer_name = "EPSON LQ-310"  # Replace with your printer name
         hPrinter = win32print.OpenPrinter(printer_name)
         win32print.GetPrinter(hPrinter, 2)  # Just to confirm printer is accessible
         pdc = win32ui.CreateDC()
@@ -59,7 +59,7 @@ def print_service_cost(request: PrintRequest):
         })
         font_small = win32ui.CreateFont({
             "name": "Courier New",
-            "height": 22
+            "height": 26
         })
 
         now = datetime.now()
@@ -75,8 +75,8 @@ def print_service_cost(request: PrintRequest):
         qty_width = 10
         total_width = 12
 
-        x = 50  # Left margin
-        y = 100  # Top starting point
+        x = 30  # Left margin
+        y = 30  # Top starting point
 
         # Header
         pdc.SelectObject(font_bold)
@@ -102,7 +102,7 @@ def print_service_cost(request: PrintRequest):
             wrapped_lines = wrap_text(item.service_name, service_name_width)
             for i, line in enumerate(wrapped_lines):
                 qty = str(item.quantity).rjust(qty_width) if i == 0 else "".rjust(qty_width)
-                total_amt = f"Rs.{item.total}".rjust(total_width) if i == 0 else "".rjust(total_width)
+                total_amt = f"{item.total}".rjust(total_width) if i == 0 else "".rjust(total_width)
                 pdc.TextOut(x, y, f"{line.ljust(service_name_width)}{qty}{total_amt}")
                 y += 30
 

@@ -24,7 +24,8 @@ class PrintRequest(BaseModel):
 @router.post("/print")
 def print_bill(request: PrintRequest):
     try:
-        printer_name = "MSPrintPDF" # Change to your printer name
+        # printer_name = "MSPrintPDF" # Change to your printer name
+        printer_name = "EPSON LQ-310" # Change to your printer name
         hPrinter = win32print.OpenPrinter(printer_name)
         printer_info = win32print.GetPrinter(hPrinter, 2)
         pdc = win32ui.CreateDC()
@@ -41,17 +42,21 @@ def print_bill(request: PrintRequest):
             "name": "Courier New",
             "height": 30
         })
+        font_small = win32ui.CreateFont({
+            "name": "Courier New",
+            "height": 26
+        })
 
         now = datetime.now()
         at = now.strftime("%d/%m/%Y %H:%M:%S")
 
-        x = 50  # shift to the left (1 cm ~ 100-120 units for LQ-310)
-        y = 100
+        x = 30  # shift to the left (1 cm ~ 100-120 units for LQ-310)
+        y = 30
 
         # Title
         pdc.SelectObject(font_bold)
         pdc.TextOut(x, y, "BINARA MEDICAL CENTRE")
-        y += 55
+        y += 60
 
         pdc.SelectObject(font_normal)
         pdc.TextOut(x, y, f"Bill No.: {request.bill_id}{'-' if request.bill_reference else ''}{request.bill_reference}    {at}")
@@ -75,11 +80,12 @@ def print_bill(request: PrintRequest):
         pdc.TextOut(x, y, f"Total: Rs.{request.total}")
         y += 40
         pdc.TextOut(x, y, f"Payment type: {request.payment_type}")
-        y += 50
+        y += 60
 
+        pdc.SelectObject(font_small)
         pdc.TextOut(x, y, "No.82, New Town, Kundasale.")
         y += 30
-        pdc.TextOut(x, y, "Tel: 0817213239/0812421942, Fax:0812421942")
+        pdc.TextOut(x, y, "Tel: 0812424499/0706421421/0742666794, Fax:0812421942")
         y += 30
         pdc.TextOut(x, y, "Email: binara82@gmail.com")
 
