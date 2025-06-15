@@ -87,7 +87,7 @@ def print_bill(request: PrintRequest):
         y += 30
         pdc.TextOut(x, y, "Tel: 0812424499/0706421421/0742666794, Fax:0812421942")
         y += 30
-        pdc.TextOut(x, y, "Email: binara82@gmail.com")
+        pdc.TextOut(x, y, "https://www.binara.live  binara82@gmail.com")
 
         pdc.EndPage()
         pdc.EndDoc()

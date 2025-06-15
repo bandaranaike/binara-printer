@@ -38,8 +38,8 @@ def wrap_text(text: str, max_chars: int):
 def print_service_cost(request: PrintRequest):
     try:
         # Setup
-        # printer_name = "MSPrintPDF"  # Replace with your printer name
-        printer_name = "EPSON LQ-310"  # Replace with your printer name
+        printer_name = "MSPrintPDF"  # Replace with your printer name
+        # printer_name = "EPSON LQ-310"  # Replace with your printer name
         hPrinter = win32print.OpenPrinter(printer_name)
         win32print.GetPrinter(hPrinter, 2)  # Just to confirm printer is accessible
         pdc = win32ui.CreateDC()
