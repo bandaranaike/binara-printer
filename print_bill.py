@@ -25,7 +25,8 @@ class PrintRequest(BaseModel):
 def print_bill(request: PrintRequest):
     try:
         # printer_name = "MSPrintPDF" # Change to your printer name
-        printer_name = "EPSON LQ-310" # Change to your printer name
+        printer_name = "Microsoft Print to PDF"  # Replace with your printer name
+        # printer_name = "EPSON LQ-310" # Change to your printer name
         hPrinter = win32print.OpenPrinter(printer_name)
         printer_info = win32print.GetPrinter(hPrinter, 2)
         pdc = win32ui.CreateDC()
@@ -55,11 +56,11 @@ def print_bill(request: PrintRequest):
 
         # Title
         pdc.SelectObject(font_bold)
-        pdc.TextOut(x, y, "BINARA MEDICAL CENTRE")
+        pdc.TextOut(x, y, "BINARA MEDICAL & DENTAL CENTRE")
         y += 60
 
         pdc.SelectObject(font_normal)
-        pdc.TextOut(x, y, f"Bill No.: {request.bill_id}{'-' if request.bill_reference else ''}{request.bill_reference}    {at}")
+        pdc.TextOut(x, y, f"Bill No.: {request.bill_id}{'-R' if request.bill_reference else ''}{request.bill_reference}    {at}")
         y += 40
         pdc.TextOut(x, y, f"Customer: {request.customer_name}")
         y += 40
