@@ -24,9 +24,7 @@ class PrintRequest(BaseModel):
 @router.post("/print")
 def print_bill(request: PrintRequest):
     try:
-        # printer_name = "MSPrintPDF" # Change to your printer name
-        printer_name = "Microsoft Print to PDF"  # Replace with your printer name
-        # printer_name = "EPSON LQ-310" # Change to your printer name
+        printer_name = "EPSON LQ-310"  # Replace with your installed printer name
         hPrinter = win32print.OpenPrinter(printer_name)
         printer_info = win32print.GetPrinter(hPrinter, 2)
         pdc = win32ui.CreateDC()
