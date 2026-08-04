@@ -1,32 +1,39 @@
 import win32print
 import win32ui
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, APIRouter
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import os
+import logging
+
+from printer_close import close_printer
+from printer_config import get_printer_name
+from security import require_print_agent_token
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # Directory for saving generated text files
 OUTPUT_DIR = "bills"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 class PrintRequest(BaseModel):
-    bill_reference: str
-    payment_type: str
-    bill_id: int
-    customer_name: str
-    doctor_name: str
-    items: list[dict]
-    total: str
+    bill_reference: str = Field(default="", max_length=100)
+    payment_type: str = Field(max_length=50)
+    bill_id: int = Field(ge=1)
+    customer_name: str = Field(max_length=200)
+    doctor_name: str = Field(default="", max_length=200)
+    items: list[dict] = Field(min_length=1, max_length=100)
+    total: str = Field(max_length=50)
 
 @router.post("/print")
-def print_bill(request: PrintRequest):
+def print_bill(request: PrintRequest, _: None = Depends(require_print_agent_token)):
+    pdc = None
+    h_printer = None
     try:
-        printer_name = "EPSON LQ-310"  # Replace with your installed printer name
-        hPrinter = win32print.OpenPrinter(printer_name)
-        printer_info = win32print.GetPrinter(hPrinter, 2)
+        printer_name = get_printer_name()
+        h_printer = win32print.OpenPrinter(printer_name)
         pdc = win32ui.CreateDC()
         pdc.CreatePrinterDC(printer_name)
         pdc.StartDoc("Bill Print")
@@ -58,7 +65,7 @@ def print_bill(request: PrintRequest):
         y += 60
 
         pdc.SelectObject(font_normal)
-        pdc.TextOut(x, y, f"Bill No.: {request.bill_id}{'-R' if request.bill_reference else ''}{request.bill_reference}    {at}")
+        pdc.TextOut(x, y, f"Bill No.: {request.bill_id}    {at}")
         y += 40
         pdc.TextOut(x, y, f"Customer: {request.customer_name}")
         y += 40
@@ -90,9 +97,15 @@ def print_bill(request: PrintRequest):
 
         pdc.EndPage()
         pdc.EndDoc()
-        pdc.DeleteDC()
 
         return {"status": "success", "message": "Printed without popup via device context"}
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("Bill printing failed")
+        raise HTTPException(status_code=500, detail="Printing failed")
+    finally:
+        try:
+            if pdc is not None:
+                pdc.DeleteDC()
+        finally:
+            close_printer(h_printer)

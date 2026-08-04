@@ -1,22 +1,28 @@
 import win32print
 import win32ui
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, APIRouter
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import os
+import logging
+
+from printer_close import close_printer
+from printer_config import get_printer_name
+from security import require_print_agent_token
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 class ServiceCostItem(BaseModel):
-    service_name: str
-    quantity: int
+    service_name: str = Field(max_length=200)
+    quantity: int = Field(ge=1, le=10000)
     total: float | str
 
 class PrintRequest(BaseModel):
-    start_date: str
-    end_date: str
-    items: list[ServiceCostItem]
+    start_date: str = Field(max_length=30)
+    end_date: str = Field(max_length=30)
+    items: list[ServiceCostItem] = Field(min_length=1, max_length=200)
 
 # Create output directory if needed
 OUTPUT_DIR = "reports"
@@ -35,14 +41,12 @@ def wrap_text(text: str, max_chars: int):
     return lines
 
 @router.post("/print-summary")
-def print_service_cost(request: PrintRequest):
+def print_service_cost(request: PrintRequest, _: None = Depends(require_print_agent_token)):
+    pdc = None
+    h_printer = None
     try:
-        # Setup
-        # printer_name = "MSPrintPDF"  # Replace with your printer name
-        # printer_name = "Microsoft Print to PDF"  # Replace with your printer name
-        printer_name = "EPSON LQ-310"  # Replace with your printer name
-        hPrinter = win32print.OpenPrinter(printer_name)
-        win32print.GetPrinter(hPrinter, 2)  # Just to confirm printer is accessible
+        printer_name = get_printer_name()
+        h_printer = win32print.OpenPrinter(printer_name)
         pdc = win32ui.CreateDC()
         pdc.CreatePrinterDC(printer_name)
         pdc.StartDoc("Service Cost Report")
@@ -119,10 +123,16 @@ def print_service_cost(request: PrintRequest):
         # End
         pdc.EndPage()
         pdc.EndDoc()
-        pdc.DeleteDC()
 
         return {"status": "success", "message": "Service cost report printed successfully"}
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("Summary printing failed")
+        raise HTTPException(status_code=500, detail="Printing failed")
+    finally:
+        try:
+            if pdc is not None:
+                pdc.DeleteDC()
+        finally:
+            close_printer(h_printer)
 
