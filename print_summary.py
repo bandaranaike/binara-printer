@@ -22,7 +22,9 @@ class ServiceCostItem(BaseModel):
 class PrintRequest(BaseModel):
     start_date: str = Field(max_length=30)
     end_date: str = Field(max_length=30)
-    items: list[ServiceCostItem] = Field(min_length=1, max_length=200)
+    # Empty reports are valid when a shift has no active sales.  The printer
+    # should still print the date range and a zero-total summary.
+    items: list[ServiceCostItem] = Field(default_factory=list, max_length=200)
 
 # Create output directory if needed
 OUTPUT_DIR = "reports"
